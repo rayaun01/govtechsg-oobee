@@ -6,36 +6,93 @@
   const pagesScannedList = document.getElementById('pagesScannedList');
   const pagesNotScannedList = document.getElementById('pagesNotScannedList');
 
+  const SAFE_URL_PROTOCOLS = ['http:', 'https:', 'file:'];
+
+  const getSafeHref = (value) => {
+    try {
+      const parsed = new URL(String(value));
+      return SAFE_URL_PROTOCOLS.includes(parsed.protocol) ? parsed.href : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const createExternalLink = (url, text, { className, rel } = {}) => {
+    const link = document.createElement('a');
+    const safeHref = getSafeHref(url);
+    if (safeHref) link.setAttribute('href', safeHref);
+    link.setAttribute('target', '_blank');
+    if (className) link.className = className;
+    if (rel) link.setAttribute('rel', rel);
+    link.textContent = String(text ?? '');
+    return link;
+  };
+
+  const createExternalLinkIcon = () => {
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNs, 'svg');
+    svg.setAttribute('class', 'link-external-icon');
+    svg.setAttribute('width', '16');
+    svg.setAttribute('height', '12');
+    svg.setAttribute('viewBox', '0 0 8 8');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const path = document.createElementNS(svgNs, 'path');
+    path.setAttribute(
+      'd',
+      'M7.11111 7.11111H0.888889V0.888889H4V0H0.888889C0.395556 0 0 0.4 0 0.888889V7.11111C0 7.6 0.395556 8 0.888889 8H7.11111C7.6 8 8 7.6 8 7.11111V4H7.11111V7.11111ZM4.88889 0V0.888889H6.48444L2.11556 5.25778L2.74222 5.88444L7.11111 1.51556V3.11111H8V0H4.88889Z',
+    );
+    path.setAttribute('fill', '#5735DF');
+    svg.appendChild(path);
+    return svg;
+  };
+
+  const createTextElement = (tagName, text, className) => {
+    const el = document.createElement(tagName);
+    if (className) el.className = className;
+    el.textContent = String(text ?? '');
+    return el;
+  };
+
+  const createMetadataInline = (metadata) => {
+    const container = document.createElement('div');
+    container.className = 'metadata-inline';
+    container.appendChild(createTextElement('span', metadata, 'metadata-text'));
+    return container;
+  };
+
   pagesScanned.forEach((page, index) => {
     const listItem = document.createElement('li');
+    const displayTitle = page.pageTitle?.length > 0 ? page.pageTitle : page.url;
 
     if (isCustomFlow) {
-      listItem.innerHTML = `
-        <div class="custom-flow-screenshot-container">
-          <div class="custom-flow-thumb">
-            <img 
-              src="${page.pageImagePath}" 
-              alt="Screenshot of ${page.url}"
-              class="custom-flow-screenshot"
-              onerror="this.onerror = null; this.remove();"
-            >
-          </div>
-          <div class="display-url-container">
-            <a href="${page.url}" target="_blank">${page.pageTitle?.length > 0 ? page.pageTitle : page.url}</a>
-            <p>${page.url}</p>
-          </div>
-        </div>
-      `;
+      const container = document.createElement('div');
+      container.className = 'custom-flow-screenshot-container';
+
+      const thumb = document.createElement('div');
+      thumb.className = 'custom-flow-thumb';
+      if (page.pageImagePath) {
+        const img = document.createElement('img');
+        img.className = 'custom-flow-screenshot';
+        img.alt = `Screenshot of ${page.url}`;
+        img.addEventListener('error', () => img.remove(), { once: true });
+        img.setAttribute('src', String(page.pageImagePath));
+        thumb.appendChild(img);
+      }
+
+      const urlContainer = document.createElement('div');
+      urlContainer.className = 'display-url-container';
+      urlContainer.appendChild(createExternalLink(page.url, displayTitle));
+      urlContainer.appendChild(createTextElement('p', page.url));
+
+      container.appendChild(thumb);
+      container.appendChild(urlContainer);
+      listItem.appendChild(container);
     } else {
-      listItem.innerHTML = `
-        <a href="${page.url}" target="_blank">
-          ${page.pageTitle?.length > 0 ? page.pageTitle : page.url}
-          <svg class="link-external-icon" width="16" height="12" viewBox="0 0 8 8" aria-hidden="true" focusable="false">
-            <path d="M7.11111 7.11111H0.888889V0.888889H4V0H0.888889C0.395556 0 0 0.4 0 0.888889V7.11111C0 7.6 0.395556 8 0.888889 8H7.11111C7.6 8 8 7.6 8 7.11111V4H7.11111V7.11111ZM4.88889 0V0.888889H6.48444L2.11556 5.25778L2.74222 5.88444L7.11111 1.51556V3.11111H8V0H4.88889Z" fill="#5735DF"/>
-          </svg>
-        </a>
-        <p>${page.url}</p>
-      `;
+      const link = createExternalLink(page.url, displayTitle);
+      link.appendChild(createExternalLinkIcon());
+      listItem.appendChild(link);
+      listItem.appendChild(createTextElement('p', page.url));
     }
 
     pagesScannedList.appendChild(listItem);
@@ -57,29 +114,20 @@
   const unsupportedDocs = pagesNotScanned.filter((it) => isUnsupportedDoc(it));
   const notScannedOnly = pagesNotScanned.filter((it) => !isUnsupportedDoc(it));
 
-  document.getElementById('totalPagesScannedLabel').innerHTML = scanData.totalPagesScanned;
-  document.getElementById('totalPagesNotScannedLabel').innerHTML =
-    notScannedOnly.length;
+  document.getElementById('totalPagesScannedLabel').textContent = String(scanData.totalPagesScanned);
+  document.getElementById('totalPagesNotScannedLabel').textContent = String(
+    notScannedOnly.length,
+  );
 
   notScannedOnly.forEach((page, index) => {
-    var listItem = document.createElement('li');
+    const listItem = document.createElement('li');
     const url = page.url || page;
     const metadata = page.metadata || page;
 
-    const linkHTML = `<a class="not-scanned-url" href="${url}" target="_blank">
-      ${url}
-      <svg class="link-external-icon" width="16" height="12" viewBox="0 0 8 8" aria-hidden="true" focusable="false">
-        <path d="M7.11111 7.11111H0.888889V0.888889H4V0H0.888889C0.395556 0 0 0.4 0 0.888889V7.11111C0 7.6 0.395556 8 0.888889 8H7.11111C7.6 8 8 7.6 8 7.11111V4H7.11111V7.11111ZM4.88889 0V0.888889H6.48444L2.11556 5.25778L2.74222 5.88444L7.11111 1.51556V3.11111H8V0H4.88889Z" fill="#5735DF"/>
-      </svg>
-    </a>`;
-    const metadataHTML = `
-      <div class="metadata-inline">
-        <span class="metadata-text">
-          ${metadata}
-        </span>
-      </div>`;
-
-    listItem.innerHTML = `${linkHTML}${metadataHTML}`;
+    const link = createExternalLink(url, url, { className: 'not-scanned-url' });
+    link.appendChild(createExternalLinkIcon());
+    listItem.appendChild(link);
+    listItem.appendChild(createMetadataInline(metadata));
     pagesNotScannedList.appendChild(listItem);
   });
 
@@ -91,20 +139,11 @@
       const url = page.url || page;
       const title = page.pageTitle?.length ? page.pageTitle : url;
       const metadata = page.metadata || 'Not A Supported Document';
-      li.innerHTML = `
-        <a href="${url}" target="_blank" rel="noopener">
-          ${title}
-          <svg class="link-external-icon" width="16" height="12" viewBox="0 0 8 8" aria-hidden="true" focusable="false">
-            <path d="M7.11111 7.11111H0.888889V0.888889H4V0H0.888889C0.395556 0 0 0.4 0 0.888889V7.11111C0 7.6 0.395556 8 0.888889 8H7.11111C7.6 8 8 7.6 8 7.11111V4H7.11111V7.11111ZM4.88889 0V0.888889H6.48444L2.11556 5.25778L2.74222 5.88444L7.11111 1.51556V3.11111H8V0H4.88889Z" fill="#5735DF"/>
-          </svg>
-        </a>
 
-        <div class="metadata-inline">
-          <span class="metadata-text">
-            ${metadata}
-          </span>
-        </div>
-      `;
+      const link = createExternalLink(url, title, { rel: 'noopener' });
+      link.appendChild(createExternalLinkIcon());
+      li.appendChild(link);
+      li.appendChild(createMetadataInline(metadata));
       unsupportedList.appendChild(li);
     });
   }
