@@ -28,7 +28,7 @@
 
   const formattedViewerLocalStartTime = formatAboutStartTime(scanData.startTime);
 
-  document.getElementById('websiteTitle').innerHTML = scanData.siteName;
+  document.getElementById('websiteTitle').textContent = scanData.siteName ?? '';
 
   const urlA = document.getElementById('urlScanned');
   const urlSpan = document.getElementById('urlScannedText');

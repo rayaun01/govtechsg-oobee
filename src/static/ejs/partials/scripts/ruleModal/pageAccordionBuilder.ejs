@@ -426,7 +426,7 @@
           <div class="accordion-item rule-modal-item">
             <div class="accordion-header" id="${accordionId}-title">
               ${normalMode ? '<button' : '<div'}
-                aria-label="Page ${index + 1}: ${page.pageTitle}, ${pageItemsCount} ${pageItemsCount === 1 ? 'occurrence' : 'occurrences'}"
+                aria-label="Page ${index + 1}: ${htmlEscapeString(String(page.pageTitle ?? ''))}, ${pageItemsCount} ${pageItemsCount === 1 ? 'occurrence' : 'occurrences'}"
                 class="accordion-button collapsed"
                 ${normalMode ? 'type="button"' : ''}
               >
@@ -444,7 +444,7 @@
                     fill="#5735DF"
                   />
                 </svg>
-                <div class="me-3 flex-1">${page.metadata ? page.metadata : page.pageTitle}</div>
+                <div class="me-3 flex-1">${htmlEscapeString(String((page.metadata ? page.metadata : page.pageTitle) ?? ''))}</div>
                 <div class="ms-auto rule-occurrence-count counter">${pageItemsCount} occ.</div>
               ${normalMode ? '</button>' : '</div>'}
             </div>
